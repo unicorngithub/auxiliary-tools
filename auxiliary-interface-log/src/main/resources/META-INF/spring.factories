@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.auxiliary.interfaces.log.config.InterfacesLogConfig
+
