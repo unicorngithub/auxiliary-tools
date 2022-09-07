@@ -25,7 +25,7 @@ public class InterfacesLogConfig {
         if (properties.isEnable()) {
             InterfacesRunLogAdvice auxiliaryInterfaceLogAdivce = new InterfacesRunLogAdvice(properties, applicationContext);
             try {
-                Thread.sleep(1000 * 1);
+                Thread.sleep(2000);
                 auxiliaryInterfaceLogAdivce.printInterface();
             } catch (Exception ex) {
             }
@@ -41,7 +41,7 @@ public class InterfacesLogConfig {
         if (properties.isEnable()) {
             InterfacesDocumentAdvice auxiliaryInterfaceLogAdivce = new InterfacesDocumentAdvice(properties, applicationContext);
             try {
-                Thread.sleep(1100 * 1);
+                Thread.sleep(3000);
                 auxiliaryInterfaceLogAdivce.printDocument();
             } catch (Exception ex) {
             }

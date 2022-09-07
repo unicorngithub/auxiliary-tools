@@ -1,6 +1,7 @@
 package com.auxiliary.interfaces.log.advice;
 
 import com.auxiliary.interfaces.log.config.AuxiliaryInterfacesLogProperties;
+import com.auxiliary.interfaces.log.utils.AddressUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
@@ -10,7 +11,6 @@ import org.springframework.web.servlet.mvc.condition.PathPatternsRequestConditio
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +34,7 @@ public class InterfacesRunLogAdvice {
     public void printInterface() {
         try {
             Environment env = application.getEnvironment();
-            String ip = InetAddress.getLocalHost().getHostAddress();
+            String ip = AddressUtils.getLocalHostExactAddress().getHostAddress();
             String port = env.getProperty("server.port");
             String path = env.getProperty("server.servlet.context-path");
             String environmental = application.getEnvironment().getProperty("environmental.identification");

@@ -5,7 +5,8 @@ import com.auxiliary.interfaces.log.dto.AuxiliaryDocumentBeanDto;
 import com.auxiliary.interfaces.log.dto.AuxiliaryDocumentMethodDto;
 import com.auxiliary.interfaces.log.dto.AuxiliaryDocumentUrlDto;
 import com.auxiliary.interfaces.log.enums.ParamsType;
-import com.auxiliary.interfaces.log.interfaces.AnalysisDocument;
+import com.auxiliary.interfaces.log.interfaces.AuxiliaryAnalysisDocument;
+import com.auxiliary.interfaces.log.utils.LogUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -65,7 +66,7 @@ public class InterfacesDocumentAdvice {
             Object bean = application.getBean(dto.getBeanName());
             dto.setClas(bean.getClass());
             // 获取注解
-            AnalysisDocument classObject = AnnotationUtils.findAnnotation(bean.getClass(), AnalysisDocument.class);
+            AuxiliaryAnalysisDocument classObject = AnnotationUtils.findAnnotation(bean.getClass(), AuxiliaryAnalysisDocument.class);
             // 类存在注解
             if (null != classObject) {
                 Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
@@ -81,7 +82,7 @@ public class InterfacesDocumentAdvice {
                 // 获取所有方法
                 Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
                 Arrays.stream(methods).forEach(m -> {
-                    AnalysisDocument annotation = AnnotationUtils.findAnnotation(m, AnalysisDocument.class);
+                    AuxiliaryAnalysisDocument annotation = AnnotationUtils.findAnnotation(m, AuxiliaryAnalysisDocument.class);
                     if (null != annotation) {
                         printDocument(dto.setMethod(m));
                     }
@@ -91,26 +92,27 @@ public class InterfacesDocumentAdvice {
     }
 
     private void printDocument(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
-        System.out.println(SEPARATOR);
-        System.out.println("解析方法[" + auxiliaryBeanDto.getClassName() + " -> " + auxiliaryBeanDto.getMethod().getName() + "]");
+        StringBuffer documentLog = LogUtils.appendLogln(SEPARATOR);
+        LogUtils.appendln(documentLog, "解析方法[" + auxiliaryBeanDto.getClassName() + " -> " + auxiliaryBeanDto.getMethod().getName() + "]");
         try {
             // 接口地址
             AuxiliaryDocumentUrlDto urlDto = documentUrl(auxiliaryBeanDto);
             String requestMethod = Arrays.stream(urlDto.getMethod()).map(RequestMethod::name).collect(Collectors.joining("/"));
-            System.out.println("接口：" + (StringUtils.isBlank(requestMethod) ? "ALL" : requestMethod) + " & " + urlDto.getUrl());
+            LogUtils.appendln(documentLog, "接口：" + (StringUtils.isBlank(requestMethod) ? "ALL" : requestMethod) + " & " + urlDto.getUrl());
             // 接口入参
             Collection<String> documentParams = documentParams(auxiliaryBeanDto);
-            System.out.println("入参：");
-            documentParams.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> System.out.println(e));
+            LogUtils.appendln(documentLog, "入参：");
+            documentParams.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
             // 接口出参
             Collection<String> documentResponse = documentResponse(auxiliaryBeanDto);
-            System.out.println("出参：");
-            documentResponse.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> System.out.println(e));
+            LogUtils.appendln(documentLog, "出参：");
+            documentResponse.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
         } catch (Exception ex) {
             if (properties.isDebug()) {
                 ex.printStackTrace();
             }
         }
+        System.out.print(documentLog.toString());
     }
 
 
@@ -313,7 +315,7 @@ public class InterfacesDocumentAdvice {
                 e.printStackTrace();
             }
         }
-        Method[] methods = clazz.getMethods();
+        Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
             if (methodName.equals(method.getName())) {
                 Parameter[] parameters = method.getParameters();
@@ -333,7 +335,7 @@ public class InterfacesDocumentAdvice {
         // 解析方法
         if (clas.isPrimitive() || clas.isArray() || verification(clas,
                 Boolean.class, Character.class, Byte.class, Short.class, Integer.class, Long.class,
-                Float.class, Double.class, String.class, BigDecimal.class, MultipartFile.class)) {
+                Float.class, Double.class, String.class, BigDecimal.class, MultipartFile.class, Date.class)) {
             return StringUtils.isNotBlank(name) ? name + "::" + clas.getTypeName() : clas.getTypeName();
         }
         if (clas == HttpServletRequest.class || clas == HttpServletResponse.class) {

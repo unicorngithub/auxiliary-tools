@@ -4,9 +4,12 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Data
-@ConfigurationProperties(prefix = "iguos.auxiliary.interface-log")
+@ConfigurationProperties(prefix = "auxiliary.interface-log")
 public class AuxiliaryInterfacesLogProperties {
 
-    private boolean enable = true;
+    /**
+     * auxiliary.interface-log.enable
+     */
+    private boolean enable = false;
 
 }
