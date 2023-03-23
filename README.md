@@ -49,8 +49,11 @@
 ```
 
 ## 使用说明
-#### auxiliary-interface-log生成日志
-> 在类或方法上添加注解 @AnalysisDocument
+#### 1、auxiliary-interface-log 
+接口打印日志
+> auxiliary.interface-log.enable: true/false
 
+生成日志
+> 在类或方法上添加注解 @AnalysisDocument
 
 
