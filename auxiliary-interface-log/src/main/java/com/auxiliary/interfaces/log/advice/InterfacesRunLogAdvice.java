@@ -6,14 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 辅助工具-启动打印日志
@@ -54,7 +55,8 @@ public class InterfacesRunLogAdvice {
             printInfo.append("All request url:\n\t");
             Set<String> urls = getAllUrl(application);
             for (String url : urls) {
-                printInfo.append("http://" + ip + ":" + port + path + url + "\n\t");
+                String[] methods = url.split("\\|");
+                printInfo.append(complement(methods[0], 4) + ":http://" + ip + ":" + port + path + methods[1] + "\n\t");
             }
             printInfo.append("Total:" + urls.size() + "\n");
             printInfo.append("-------------------------------------------------------------------\n");
@@ -67,21 +69,36 @@ public class InterfacesRunLogAdvice {
     // 获取项目所有url
     private Set<String> getAllUrl(ApplicationContext run) {
         RequestMappingHandlerMapping mapping = run.getBean(RequestMappingHandlerMapping.class);
-        //获取url与类和方法的对应信息
+        // 获取url与类和方法的对应信息
         Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
         Set<String> urls = new HashSet<>();
-        for (RequestMappingInfo info : map.keySet()) {
-            //获取url的Set集合，一个方法可能对应多个url
-            PathPatternsRequestCondition patternsCondition = info.getPathPatternsCondition();
-            Set<String> patterns = patternsCondition.getDirectPaths();
-
-            // 这里可获取请求方式 Get,Post等等
-            // Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
+        map.forEach((requestMappingInfo, handlerMethod) -> {
+            Set<String> patterns = new HashSet<>();
+            Set<String> directPaths = requestMappingInfo.getDirectPaths();
+            Set<String> patternValues = requestMappingInfo.getPatternValues();
+            patterns.addAll(directPaths);
+            patterns.addAll(patternValues);
+            // 请求类型GET.POST.PUT...
+            Set<RequestMethod> requestType = requestMappingInfo.getMethodsCondition().getMethods();
             for (String url : patterns) {
-                urls.add(url);
+                String requestMethods = requestType.stream().map(RequestMethod::name).collect(Collectors.joining(","));
+                urls.add(requestMethods + "|" + url);
             }
-        }
+        });
         return urls;
     }
 
+    /**
+     * 补齐
+     *
+     * @param value
+     * @param index
+     * @return
+     */
+    private String complement(String value, int index) {
+        while (value.length() < index) {
+            value += " ";
+        }
+        return value;
+    }
 }

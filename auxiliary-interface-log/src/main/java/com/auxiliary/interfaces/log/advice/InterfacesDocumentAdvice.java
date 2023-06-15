@@ -6,10 +6,12 @@ import com.auxiliary.interfaces.log.dto.AuxiliaryDocumentMethodDto;
 import com.auxiliary.interfaces.log.dto.AuxiliaryDocumentUrlDto;
 import com.auxiliary.interfaces.log.enums.ParamsType;
 import com.auxiliary.interfaces.log.interfaces.AuxiliaryAnalysisDocument;
+import com.auxiliary.interfaces.log.utils.AddressUtils;
 import com.auxiliary.interfaces.log.utils.LogUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -54,8 +56,7 @@ public class InterfacesDocumentAdvice {
     public void printDocument() {
         String[] beanDefinitionNames = application.getBeanDefinitionNames();
         if (beanDefinitionNames.length == 0) return;
-
-        System.out.println(SEPARATOR);
+        System.out.println(">>> 接口文档生成开始");
         // 获取指定包下所有类
         Collection<String> specifyClass = getSpecifyClass();
         // 获取所有Bean名
@@ -93,26 +94,29 @@ public class InterfacesDocumentAdvice {
 
     private void printDocument(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         StringBuffer documentLog = LogUtils.appendLogln(SEPARATOR);
-        LogUtils.appendln(documentLog, "解析方法[" + auxiliaryBeanDto.getClassName() + " -> " + auxiliaryBeanDto.getMethod().getName() + "]");
+        if (properties.isDebug()) {
+            LogUtils.appendln(documentLog, "解析方法[" + auxiliaryBeanDto.getClassName() + " -> " + auxiliaryBeanDto.getMethod().getName() + "]");
+        }
         try {
             // 接口地址
             AuxiliaryDocumentUrlDto urlDto = documentUrl(auxiliaryBeanDto);
             String requestMethod = Arrays.stream(urlDto.getMethod()).map(RequestMethod::name).collect(Collectors.joining("/"));
-            LogUtils.appendln(documentLog, "接口：" + (StringUtils.isBlank(requestMethod) ? "ALL" : requestMethod) + " & " + urlDto.getUrl());
+            LogUtils.appendln(documentLog, "接口：" + (StringUtils.isBlank(requestMethod) ? "ALL" : requestMethod) + " & " + webUrl() + urlDto.getUrl());
             // 接口入参
             Collection<String> documentParams = documentParams(auxiliaryBeanDto);
             LogUtils.appendln(documentLog, "入参：");
-            documentParams.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
+            documentParams.stream().filter(e -> documentParams.size() > 1 && ">>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
             // 接口出参
             Collection<String> documentResponse = documentResponse(auxiliaryBeanDto);
             LogUtils.appendln(documentLog, "出参：");
-            documentResponse.stream().filter(e -> documentParams.size() > 1 && "<无>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
+            documentResponse.stream().filter(e -> documentParams.size() > 1 && ">>".equals(e) ? false : true).forEach(e -> LogUtils.appendln(documentLog, e));
         } catch (Exception ex) {
             if (properties.isDebug()) {
                 ex.printStackTrace();
             }
         }
-        System.out.print(documentLog.toString());
+        documentLog.append(SEPARATOR).append("\n").append("\n");
+        System.out.print(documentLog);
     }
 
 
@@ -180,16 +184,10 @@ public class InterfacesDocumentAdvice {
         // 获取参数
         Parameter[] parameters = getMethodParameters(auxiliaryBeanDto.getClas(), auxiliaryBeanDto.getMethod().getName());
         if (parameters.length == 0) {
-            set.add("<无>");
+            set.add(">>");
         } else {
-            Arrays.stream(parameters).forEach(e -> {
-                String out = getParameterValue(e.getName(), e.getType(), 1, ParamsType.REQUEST);
-                if (StringUtils.isBlank(out)) {
-                    set.add("<无>");
-                } else {
-                    set.add(out);
-                }
-            });
+            Arrays.stream(parameters).forEach(e ->
+                    set.add(getParameterValue(e.getName(), e.getType(), 0, ParamsType.REQUEST)));
         }
         return set;
     }
@@ -202,8 +200,9 @@ public class InterfacesDocumentAdvice {
      */
     private Collection<String> documentResponse(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         Collection<String> list = new ArrayList<>();
-        // 获取返回值
+        // 获取对象类
         Class responseClass = auxiliaryBeanDto.getMethod().getReturnType();
+        // 解析出参
         String out = getParameterValue(null, responseClass, 0, ParamsType.RESPONSE);
         if (StringUtils.isBlank(out)) {
             String name = responseClass.getName();
@@ -234,6 +233,11 @@ public class InterfacesDocumentAdvice {
             String pattern = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
                     ClassUtils.convertClassNameToResourcePath(properties.getPackages()) + properties.getPattern();
             Resource[] resources = resourcePatternResolver.getResources(pattern);
+            System.out.println(">>> 解析路径：" + pattern + "，扫描到的类数量：" + resources.length);
+            if (resources.length > 2000 && StringUtils.isBlank(properties.getPackages())) {
+                System.out.println(">>> 扫描到的类数量过多，请配置指定扫描路径，以提高扫描效率。");
+                throw new RuntimeException("扫描到的类数量过多，请配置指定扫描路径，以提高扫描效率");
+            }
             MetadataReaderFactory readerfactory = new CachingMetadataReaderFactory(resourcePatternResolver);
             for (Resource resource : resources) {
                 // 用于读取类信息
@@ -242,7 +246,7 @@ public class InterfacesDocumentAdvice {
                 String classname = reader.getClassMetadata().getClassName();
                 beanSet.add(classname);
             }
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             if (properties.isDebug()) {
                 ex.printStackTrace();
             }
@@ -333,18 +337,22 @@ public class InterfacesDocumentAdvice {
      */
     private String getParameterValue(String name, Class clas, Integer index, ParamsType paramsType) {
         // 解析方法
+        if (clas == Void.class || clas == void.class) {
+            return ">>";
+        }
+        if (clas == HttpServletRequest.class || clas == HttpServletResponse.class) {
+            return ">>";
+        }
         if (clas.isPrimitive() || clas.isArray() || verification(clas,
                 Boolean.class, Character.class, Byte.class, Short.class, Integer.class, Long.class,
                 Float.class, Double.class, String.class, BigDecimal.class, MultipartFile.class, Date.class)) {
-            return StringUtils.isNotBlank(name) ? name + "::" + clas.getTypeName() : clas.getTypeName();
+            return ">> " + (StringUtils.isNotBlank(name) ? name + "::" + clas.getTypeName() : clas.getTypeName());
         }
-        if (clas == HttpServletRequest.class || clas == HttpServletResponse.class) {
-            return null;
-        } else if (clas.isInterface()) {
+        if (clas.isInterface()) {
             if (paramsType == ParamsType.REQUEST && properties.isDebug()) {
                 System.err.println(String.format("接口类未解析，字段名=%s, 解析类型=%s", name, clas.getTypeName()));
             }
-            return null;
+            return ">>";
         }
 
         Object obj = null;
@@ -356,17 +364,19 @@ public class InterfacesDocumentAdvice {
             }
         }
         // 过滤对象
-        if (null == obj) return null;
-        if (obj instanceof MultipartFile) return "sss";
-        if (obj instanceof HttpServletRequest) return null;
+        if (null == obj) return ">>";
+        if (obj instanceof MultipartFile) return "文件";
+        if (obj instanceof HttpServletRequest) return ">>";
         if (obj instanceof List) return "List[]";
         if (obj instanceof Map) return "Map{}";
 
         // 解析对象
         StringBuffer sb = new StringBuffer();
         List<AuxiliaryDocumentMethodDto> methods = getFieldSetMethod(clas);
-        if (StringUtils.isNotBlank(name)) {
-            sb.append(name + ":\r\n");
+        if (index > 0) {
+            if (StringUtils.isNotBlank(name)) {
+                sb.append(">> " + name + ":\r\n");
+            }
         }
         for (int i = 0; i < methods.size(); i++) {
             String str = getParameterValueVaules(methods.get(i), index, paramsType);
@@ -388,7 +398,7 @@ public class InterfacesDocumentAdvice {
         String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType);
         StringBuffer sb = new StringBuffer();
         for (int i = 1; i < index; i++) {
-            sb.append("    ");
+            sb.append("  ");
         }
         sb.append(parameterValue);
         return sb.toString();
@@ -416,7 +426,8 @@ public class InterfacesDocumentAdvice {
     /************************************************************************************************************************ */
     /************************************************************************************************************************ */
 
-    public static boolean verification(Class clas, Class... classes) {
+
+    private boolean verification(Class clas, Class... classes) {
         boolean bool = false;
         for (Class c : classes) {
             bool |= (clas == c);
@@ -424,14 +435,14 @@ public class InterfacesDocumentAdvice {
         return bool;
     }
 
-    public static String firstToLowerCase(String param) {
+    private String firstToLowerCase(String param) {
         if (StringUtils.isBlank(param)) {
             return "";
         }
         return param.substring(0, 1).toLowerCase() + param.substring(1);
     }
 
-    public static String initURL(String... urls) {
+    private String initURL(String... urls) {
         StringBuffer sb = new StringBuffer();
         for (String url : urls) {
             if (StringUtils.isBlank(url)) {
@@ -442,4 +453,11 @@ public class InterfacesDocumentAdvice {
         return sb.toString().replace("//", "/");
     }
 
+    private String webUrl() {
+        Environment env = application.getEnvironment();
+        String ip = AddressUtils.getLocalHostExactAddress().getHostAddress();
+        String port = env.getProperty("server.port");
+        String path = env.getProperty("server.servlet.context-path");
+        return "http://" + ip + ":" + port + (StringUtils.isEmpty(path) ? "" : path);
+    }
 }

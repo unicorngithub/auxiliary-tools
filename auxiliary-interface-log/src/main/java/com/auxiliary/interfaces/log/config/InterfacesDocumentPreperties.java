@@ -12,17 +12,19 @@ public class InterfacesDocumentPreperties {
     /**
      * auxiliary.document.enable
      */
-    private boolean enable = true;
+    private boolean enable = false;
     /**
      * auxiliary.document.debug
      */
     private boolean debug = false;
     /**
      * auxiliary.document.packages
+     * classpath*:packages/pattern
      */
     private String packages = "";
     /**
      * auxiliary.document.pattern
+     * classpath*:packages/pattern
      */
-    private String pattern = "/**/*Controller.class";
+    private String pattern = "/**/**.class";
 }
