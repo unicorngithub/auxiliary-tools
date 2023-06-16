@@ -15,7 +15,7 @@
     <!-- 基 本 信 息 -->
     <groupId>com.iguos.common</groupId>
     <artifactId>auxiliary-tools</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>辅助工具</name>
     <description>Demo project for Spring Boot</description>
@@ -29,7 +29,7 @@
     <!-- 版 本 管 理 -->
     <properties>
         <!-- 全 局 版 本 -->
-        <auxiliary.tools.version>1.0-SNAPSHOT</auxiliary.tools.version>
+        <auxiliary.tools.version>1.0.0</auxiliary.tools.version>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <spring.cloud-version>2021.0.3</spring.cloud-version>
