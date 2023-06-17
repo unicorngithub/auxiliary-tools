@@ -16,15 +16,6 @@
     <groupId>com.iguos.common</groupId>
     <artifactId>auxiliary-tools</artifactId>
     <version>1.0.0</version>
-    <packaging>pom</packaging>
-    <name>辅助工具</name>
-    <description>Demo project for Spring Boot</description>
-
-    <!-- 模 块 管 理 -->
-    <modules>
-        <module>auxiliary-interface-log</module>
-        <module>auxiliary-servlet-tools</module>
-    </modules>
 
     <!-- 版 本 管 理 -->
     <properties>
@@ -37,27 +28,38 @@
 
     <!-- 继 承 依 赖 -->
     <dependencies>
+        <!-- spring-boot-starter-web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <!-- lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
+        <!-- lang工具类 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
     </dependencies>
 
-    <!-- 依 赖 管 理 -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.iguos.common</groupId>
-                <artifactId>auxiliary-interface-log</artifactId>
-                <version>${auxiliary.tools.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.iguos.common</groupId>
-                <artifactId>auxiliary-servlet-tools</artifactId>
-                <version>${auxiliary.tools.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    <build>
+        <plugins>
+            <!--指定JDK编译版本-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <compilerArgument>-parameters</compilerArgument>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

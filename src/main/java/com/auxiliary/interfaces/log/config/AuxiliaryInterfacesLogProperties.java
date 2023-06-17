@@ -10,6 +10,6 @@ public class AuxiliaryInterfacesLogProperties {
     /**
      * auxiliary.interface-log.enable
      */
-    private boolean enable = false;
+    private boolean enable = true;
 
 }
