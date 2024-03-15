@@ -15,7 +15,20 @@
     <!-- 基 本 信 息 -->
     <groupId>com.iguos.common</groupId>
     <artifactId>auxiliary-tools</artifactId>
-    <version>1.0.0</version>
+    <version>1.0-SNAPSHOT</version>
+
+    <!-- 许可证信息 -->
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
+    <!-- SCM 信息 -->
+    <scm>
+        <url>https://github.com/unicorngithub/auxiliary-tools</url>
+    </scm>
 
     <!-- 版 本 管 理 -->
     <properties>
@@ -59,7 +72,37 @@
                     <compilerArgument>-parameters</compilerArgument>
                 </configuration>
             </plugin>
+            <!-- 生成 Javadoc -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
+    <!-- 配置推送地址 https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/ -->
+    <distributionManagement>
+        <repository>
+            <id>iguos</id>
+            <name>Internal Releases</name>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+        <snapshotRepository>
+            <id>iguos</id>
+            <name>Internal Snapshots</name>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
