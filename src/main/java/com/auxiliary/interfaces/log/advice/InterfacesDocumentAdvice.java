@@ -19,6 +19,7 @@ import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,37 +63,54 @@ public class InterfacesDocumentAdvice {
         // 获取所有Bean名
         Collection<AuxiliaryDocumentBeanDto> beanDtoList = getBeanNames(specifyClass);
 
+        List<String> analysisInfo = new ArrayList<>();
         // 数据处理
         beanDtoList.forEach(dto -> {
             Object bean = application.getBean(dto.getBeanName());
             dto.setClas(bean.getClass());
-            // 获取注解
-            AuxiliaryAnalysisDocument classObject = AnnotationUtils.findAnnotation(bean.getClass(), AuxiliaryAnalysisDocument.class);
-            // 类存在注解
-            if (null != classObject) {
+            if (0 == properties.getPrintType()) {
+                // 获取注解
+                AuxiliaryAnalysisDocument classObject = AnnotationUtils.findAnnotation(bean.getClass(), AuxiliaryAnalysisDocument.class);
+                // 类存在注解
+                if (null != classObject) {
+                    Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
+                    Arrays.stream(methods).forEach(m -> {
+                        RequestMapping annotation = AnnotationUtils.findAnnotation(m, RequestMapping.class);
+                        if (annotation != null) {
+                            String documentStr = printDocument(dto.setMethod(m));
+                            analysisInfo.add(documentStr);
+                        }
+                    });
+                }
+                // 类无注解，遍历方法
+                else {
+                    // 获取所有方法
+                    Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
+                    Arrays.stream(methods).forEach(m -> {
+                        AuxiliaryAnalysisDocument annotation = AnnotationUtils.findAnnotation(m, AuxiliaryAnalysisDocument.class);
+                        if (null != annotation) {
+                            String documentStr = printDocument(dto.setMethod(m));
+                            analysisInfo.add(documentStr);
+                        }
+                    });
+                }
+            } else {
                 Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
                 Arrays.stream(methods).forEach(m -> {
                     RequestMapping annotation = AnnotationUtils.findAnnotation(m, RequestMapping.class);
                     if (annotation != null) {
-                        printDocument(dto.setMethod(m));
-                    }
-                });
-            }
-            // 类无注解，遍历方法
-            else {
-                // 获取所有方法
-                Method[] methods = ReflectionUtils.getDeclaredMethods(bean.getClass());
-                Arrays.stream(methods).forEach(m -> {
-                    AuxiliaryAnalysisDocument annotation = AnnotationUtils.findAnnotation(m, AuxiliaryAnalysisDocument.class);
-                    if (null != annotation) {
-                        printDocument(dto.setMethod(m));
+                        String documentStr = printDocument(dto.setMethod(m));
+                        analysisInfo.add(documentStr);
                     }
                 });
             }
         });
+        if (CollectionUtils.isEmpty(analysisInfo)) {
+            System.out.println("未生成文档，如需生成文档信息请在接口上添加注解 @AuxiliaryAnalysisDocument");
+        }
     }
 
-    private void printDocument(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
+    private String printDocument(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         StringBuffer documentLog = LogUtils.appendLogln(SEPARATOR);
         if (properties.isDebug()) {
             LogUtils.appendln(documentLog, "解析方法[" + auxiliaryBeanDto.getClassName() + " -> " + auxiliaryBeanDto.getMethod().getName() + "]");
@@ -117,6 +135,7 @@ public class InterfacesDocumentAdvice {
         }
         documentLog.append(SEPARATOR).append("\n").append("\n");
         System.out.print(documentLog);
+        return documentLog.toString();
     }
 
 
@@ -234,18 +253,25 @@ public class InterfacesDocumentAdvice {
                     ClassUtils.convertClassNameToResourcePath(properties.getPackages()) + properties.getPattern();
             Resource[] resources = resourcePatternResolver.getResources(pattern);
             System.out.println(">>> 解析路径：" + pattern + "，扫描到的类数量：" + resources.length);
+            Integer index = null;
             if (resources.length > 2000 && StringUtils.isBlank(properties.getPackages())) {
-                System.out.println(">>> 扫描到的类数量过多，请配置指定扫描路径，以提高扫描效率。");
-                throw new RuntimeException("扫描到的类数量过多，请配置指定扫描路径，以提高扫描效率");
+                System.out.println(">>> 扫描到的类数量过多，可配置指定扫描路径【auxiliary.document.packages】，以提高扫描效率。");
+                index = resources.length / resources.length / 2000;
             }
             MetadataReaderFactory readerfactory = new CachingMetadataReaderFactory(resourcePatternResolver);
-            for (Resource resource : resources) {
+            for (int i = 0; i < resources.length; i++) {
+                if (null != index && i > 0 && i % index == 0) {
+                    BigDecimal bigDecimal = new BigDecimal(Float.valueOf(i) / resources.length * 100);
+                    System.out.println(">>> 解析进度：" + bigDecimal.setScale(2, BigDecimal.ROUND_HALF_UP) + "%");
+                }
+                Resource resource = resources[i];
                 // 用于读取类信息
                 MetadataReader reader = readerfactory.getMetadataReader(resource);
                 // 扫描到的class
                 String classname = reader.getClassMetadata().getClassName();
                 beanSet.add(classname);
             }
+            System.out.println(">>> 解析完成！");
         } catch (Throwable ex) {
             if (properties.isDebug()) {
                 ex.printStackTrace();
