@@ -12,7 +12,7 @@ public class InterfacesDocumentPreperties {
     /**
      * auxiliary.document.enable
      */
-    private boolean enable = false;
+    private boolean enable = true;
     /**
      * auxiliary.document.debug
      */

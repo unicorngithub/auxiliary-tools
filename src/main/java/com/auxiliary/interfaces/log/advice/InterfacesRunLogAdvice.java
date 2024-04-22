@@ -11,9 +11,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -53,10 +51,10 @@ public class InterfacesRunLogAdvice {
                     "-------------------------------------------------------------------------\n\t");
             // 获取所有链接
             printInfo.append("All request url:\n\t");
-            Set<String> urls = getAllUrl(application);
+            List<String> urls = getAllUrl(application);
             for (String url : urls) {
                 String[] methods = url.split("\\|");
-                printInfo.append(complement(methods[0], 4) + ":http://" + ip + ":" + port + path + methods[1] + "\n\t");
+                printInfo.append(complement(methods[0], 6) + " : http://" + ip + ":" + port + path + methods[1] + "\n\t");
             }
             printInfo.append("Total:" + urls.size() + "\n");
             printInfo.append("-------------------------------------------------------------------\n");
@@ -67,17 +65,21 @@ public class InterfacesRunLogAdvice {
     }
 
     // 获取项目所有url
-    private Set<String> getAllUrl(ApplicationContext run) {
+    private List<String> getAllUrl(ApplicationContext run) {
         RequestMappingHandlerMapping mapping = run.getBean(RequestMappingHandlerMapping.class);
         // 获取url与类和方法的对应信息
         Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
-        Set<String> urls = new HashSet<>();
+        List<String> urls = new ArrayList<>();
         map.forEach((requestMappingInfo, handlerMethod) -> {
             Set<String> patterns = new HashSet<>();
+            // 获取请求映射信息中的直接路径集合，这些路径对应于具体的请求路径，不包含任何模式变量
             Set<String> directPaths = requestMappingInfo.getDirectPaths();
+            // 获取请求映射信息中的模式值集合，这些值对应于包含模式变量的请求路径模式，如/{id}
             Set<String> patternValues = requestMappingInfo.getPatternValues();
+            // 添加所有路径
             patterns.addAll(directPaths);
             patterns.addAll(patternValues);
+
             // 请求类型GET.POST.PUT...
             Set<RequestMethod> requestType = requestMappingInfo.getMethodsCondition().getMethods();
             for (String url : patterns) {
@@ -85,20 +87,22 @@ public class InterfacesRunLogAdvice {
                 urls.add(requestMethods + "|" + url);
             }
         });
-        return urls;
+        return urls.stream().sorted(Comparator.comparing(e -> e.split("\\|")[1])).distinct().collect(Collectors.toList());
     }
 
     /**
-     * 补齐
+     * 补齐（左侧插入）
      *
      * @param value
      * @param index
      * @return
      */
     private String complement(String value, int index) {
-        while (value.length() < index) {
-            value += " ";
+        StringBuilder valueBuilder = new StringBuilder(value);
+        while (valueBuilder.length() < index) {
+            valueBuilder.insert(0, " ");
         }
+        value = valueBuilder.toString();
         return value;
     }
 }
