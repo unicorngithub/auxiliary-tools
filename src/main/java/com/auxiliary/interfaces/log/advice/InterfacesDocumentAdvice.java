@@ -26,9 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
@@ -374,38 +372,17 @@ public class InterfacesDocumentAdvice {
                 Float.class, Double.class, String.class, BigDecimal.class, MultipartFile.class, Date.class)) {
             return ">> " + (StringUtils.isNotBlank(name) ? name + "::" + clas.getTypeName() : clas.getTypeName());
         }
-        if (clas.isInterface()) {
-            if (paramsType == ParamsType.REQUEST && properties.isDebug()) {
-                System.err.println(String.format("接口类未解析，字段名=%s, 解析类型=%s", name, clas.getTypeName()));
-            }
-            return ">>";
-        }
-
-        Object obj = null;
-        try {
-            obj = clas.newInstance();
-        } catch (Exception ex) {
-            if (properties.isDebug()) {
-                System.err.println(String.format("Class.newInstance()无法解析，字段名=%s, 解析类型=%s", name, clas.getTypeName()));
-            }
-        }
-        // 过滤对象
-        if (null == obj) return ">>";
-        if (obj instanceof MultipartFile) return "文件";
-        if (obj instanceof HttpServletRequest) return ">>";
-        if (obj instanceof List) return "List[]";
-        if (obj instanceof Map) return "Map{}";
 
         // 解析对象
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         List<AuxiliaryDocumentMethodDto> methods = getFieldSetMethod(clas);
         if (index > 0) {
             if (StringUtils.isNotBlank(name)) {
                 sb.append(">> " + name + ":\r\n");
             }
         }
-        for (int i = 0; i < methods.size(); i++) {
-            String str = getParameterValueVaules(methods.get(i), index, paramsType);
+        for (AuxiliaryDocumentMethodDto method : methods) {
+            String str = getParameterValueVaules(method, index, paramsType);
             if (StringUtils.isNotBlank(str)) {
                 sb.append(str + "\r\n");
             }
@@ -420,26 +397,55 @@ public class InterfacesDocumentAdvice {
         if (index++ > 3) {
             return null;
         }
-        Class<?> returnType = beanMethodDto.getField().getType();
-        String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType);
-        StringBuffer sb = new StringBuffer();
-        for (int i = 1; i < index; i++) {
-            sb.append("  ");
+        Field field = beanMethodDto.getField();
+        // 当前类型
+        Class<?> returnType = field.getType();
+        // 泛型类型
+        Class<?> genericity = null;
+        // 检查是否为 ParameterizedType
+        if (field.getGenericType() instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
+            // 获取泛型类型的参数
+            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            for (Type typeArgument : typeArguments) {
+                if (typeArgument instanceof Class) {
+                    genericity = (Class) typeArgument;
+                }
+            }
         }
-        sb.append(parameterValue);
-        return sb.toString();
+
+        StringBuilder builder = new StringBuilder();
+        if (null == genericity) {
+            String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType);
+            String value = stringBuilding(index, parameterValue);
+            builder.append(value);
+        } else {
+            // 泛型处理
+            String genericityValue = getParameterValue(beanMethodDto.getName(), genericity, index, paramsType);
+            String value = stringBuilding(index, genericityValue);
+            builder.append(value);
+        }
+        return builder.toString();
     }
 
-    private List<AuxiliaryDocumentMethodDto> getFieldSetMethod(Class clas) {
+    /**
+     * 获取当前类所有字段
+     *
+     * @param clazz
+     * @return
+     */
+    private List<AuxiliaryDocumentMethodDto> getFieldSetMethod(Class clazz) {
         List<AuxiliaryDocumentMethodDto> set = new ArrayList<>();
-        Field[] fields = clas.getDeclaredFields();
-        Method[] methods = clas.getMethods();
-        Arrays.stream(methods).forEach(e -> {
-            if (!(e.getName().length() > 3 && "set".equals(e.getName().substring(0, 3)))) {
+        // 获取当前类和其父类的所有字段
+        List<Field> fields = getAllFieldsIncludingSuperclasses(clazz);
+        Method[] methods = clazz.getMethods();
+        // 获取当前类的所有方法
+        Arrays.stream(methods).forEach(method -> {
+            if (!(method.getName().length() > 3 && "set".equals(method.getName().substring(0, 3)))) {
                 return;
             }
-            Map<String, Field> fieldsMap = Arrays.stream(fields).collect(Collectors.toMap(Field::getName, Function.identity()));
-            String name = firstToLowerCase(e.getName().substring(3));
+            Map<String, Field> fieldsMap = fields.stream().collect(Collectors.toMap(Field::getName, Function.identity()));
+            String name = firstToLowerCase(method.getName().substring(3));
             Field field = fieldsMap.get(name);
             if (null != field) {
                 set.add(new AuxiliaryDocumentMethodDto().setName(name).setField(field));
@@ -448,12 +454,27 @@ public class InterfacesDocumentAdvice {
         return set;
     }
 
+    /**
+     * 递归获取当前类和其父类的所有字段
+     *
+     * @param clazz
+     * @return
+     */
+    private List<Field> getAllFieldsIncludingSuperclasses(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>(Arrays.asList(clazz.getDeclaredFields()));
+        Class<?> superClass = clazz.getSuperclass();
+        if (superClass != null) {
+            fields.addAll(getAllFieldsIncludingSuperclasses(superClass));
+        }
+        return fields;
+    }
+
 
     /************************************************************************************************************************ */
     /************************************************************************************************************************ */
 
 
-    private boolean verification(Class clas, Class... classes) {
+    private boolean verification(Class<?> clas, Class<?>... classes) {
         boolean bool = false;
         for (Class c : classes) {
             bool |= (clas == c);
@@ -461,11 +482,11 @@ public class InterfacesDocumentAdvice {
         return bool;
     }
 
-    private String firstToLowerCase(String param) {
-        if (StringUtils.isBlank(param)) {
+    private String firstToLowerCase(String str) {
+        if (StringUtils.isBlank(str)) {
             return "";
         }
-        return param.substring(0, 1).toLowerCase() + param.substring(1);
+        return Character.toLowerCase(str.charAt(0)) + str.substring(1);
     }
 
     private String initURL(String... urls) {
@@ -485,5 +506,14 @@ public class InterfacesDocumentAdvice {
         String port = env.getProperty("server.port");
         String path = env.getProperty("server.servlet.context-path");
         return "http://" + ip + ":" + port + (StringUtils.isEmpty(path) ? "" : path);
+    }
+
+    private String stringBuilding(int index, String value) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i < index; i++) {
+            sb.append("  ");
+        }
+        sb.append(value);
+        return sb.toString();
     }
 }
