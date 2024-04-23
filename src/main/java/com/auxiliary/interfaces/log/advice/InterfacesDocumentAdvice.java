@@ -204,7 +204,7 @@ public class InterfacesDocumentAdvice {
             set.add(">>");
         } else {
             Arrays.stream(parameters).forEach(e ->
-                    set.add(getParameterValue(e.getName(), e.getType(), 0, ParamsType.REQUEST)));
+                    set.add(getParameterValue(e.getName(), e.getType(), 0, ParamsType.REQUEST, null)));
         }
         return set;
     }
@@ -220,7 +220,7 @@ public class InterfacesDocumentAdvice {
         // 获取对象类
         Class responseClass = auxiliaryBeanDto.getMethod().getReturnType();
         // 解析出参
-        String out = getParameterValue(null, responseClass, 0, ParamsType.RESPONSE);
+        String out = getParameterValue(null, responseClass, 0, ParamsType.RESPONSE, null);
         if (StringUtils.isBlank(out)) {
             String name = responseClass.getName();
             list.add("<" + name + ">");
@@ -356,10 +356,14 @@ public class InterfacesDocumentAdvice {
     /**
      * 生成对象赋值
      *
+     * @param name
      * @param clas
+     * @param index
+     * @param paramsType
+     * @param genericityType 泛型类型（非泛型为Null）
      * @return
      */
-    private String getParameterValue(String name, Class clas, Integer index, ParamsType paramsType) {
+    private String getParameterValue(String name, Class clas, Integer index, ParamsType paramsType, String genericityType) {
         // 解析方法
         if (clas == Void.class || clas == void.class) {
             return ">>";
@@ -378,7 +382,11 @@ public class InterfacesDocumentAdvice {
         List<AuxiliaryDocumentMethodDto> methods = getFieldSetMethod(clas);
         if (index > 0) {
             if (StringUtils.isNotBlank(name)) {
-                sb.append(">> " + name + ":\r\n");
+                if (StringUtils.isNotBlank(genericityType)) {
+                    sb.append(">> " + name + "::" + genericityType + "\r\n");
+                } else {
+                    sb.append(">> " + name + "\r\n");
+                }
             }
         }
         for (AuxiliaryDocumentMethodDto method : methods) {
@@ -387,6 +395,7 @@ public class InterfacesDocumentAdvice {
                 sb.append(str + "\r\n");
             }
         }
+        // 返回数据
         if (sb.length() > 2) {
             sb.setLength(sb.length() - 2);
         }
@@ -416,12 +425,12 @@ public class InterfacesDocumentAdvice {
 
         StringBuilder builder = new StringBuilder();
         if (null == genericity) {
-            String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType);
+            String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType, null);
             String value = stringBuilding(index, parameterValue);
             builder.append(value);
         } else {
             // 泛型处理
-            String genericityValue = getParameterValue(beanMethodDto.getName(), genericity, index, paramsType);
+            String genericityValue = getParameterValue(beanMethodDto.getName(), genericity, index, paramsType, returnType.getTypeName());
             String value = stringBuilding(index, genericityValue);
             builder.append(value);
         }
@@ -517,3 +526,5 @@ public class InterfacesDocumentAdvice {
         return sb.toString();
     }
 }
+
+
