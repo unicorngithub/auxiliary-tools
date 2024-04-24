@@ -198,8 +198,8 @@ public class InterfacesDocumentAdvice {
      */
     private Collection<String> documentParams(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         Set<String> set = new LinkedHashSet<>();
-        // 获取参数
-        Parameter[]   parameters = auxiliaryBeanDto.getMethod().getParameters();
+        // 获取参数（直接获取auxiliaryBeanDto.getMethod().getParameters()中对象，无法获取参数实际名称）
+        Parameter[] parameters = getMethodParameters(auxiliaryBeanDto.getClas(), auxiliaryBeanDto.getMethod());
         if (parameters.length == 0) {
             set.add(">>");
         } else {
@@ -318,6 +318,41 @@ public class InterfacesDocumentAdvice {
 
     /************************************************************************************************************************ */
     /************************************************************************************************************************ */
+
+
+    /**
+     * 获取方法入参对象
+     *
+     * @param clas
+     * @param controllerMethod
+     * @return
+     */
+    private Parameter[] getMethodParameters(Class<?> clas, Method controllerMethod) {
+        String classForName;
+        if (clas.getName().indexOf("$") > 0) {
+            classForName = clas.getName().substring(0, clas.getName().indexOf("$"));
+        } else {
+            classForName = clas.getName();
+        }
+
+        Class<?> clazz = null;
+        try {
+            clazz = Class.forName(classForName);
+        } catch (ClassNotFoundException e) {
+            if (properties.isDebug()) {
+                e.printStackTrace();
+            }
+        }
+
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            if (areMethodsSame(controllerMethod, method)) {
+                Parameter[] parameters = method.getParameters();
+                return parameters;
+            }
+        }
+        return new Parameter[0];
+    }
 
     /**
      * 生成对象赋值
@@ -448,6 +483,24 @@ public class InterfacesDocumentAdvice {
     /************************************************************************************************************************ */
     /************************************************************************************************************************ */
 
+    /**
+     * 判断两个方法是否一致
+     *
+     * @param m1
+     * @param m2
+     * @return
+     */
+    public boolean areMethodsSame(Method m1, Method m2) {
+        // 方法名不同
+        if (!m1.getName().equals(m2.getName())) {
+            return false;
+        }
+        // 返回类型不同
+        if (m1.getReturnType() != m2.getReturnType()) {
+            return false;
+        }
+        return Arrays.equals(m1.getParameterTypes(), m2.getParameterTypes()); // 参数类型数组是否相同
+    }
 
     private boolean verification(Class<?> clas, Class<?>... classes) {
         boolean bool = false;
@@ -492,5 +545,3 @@ public class InterfacesDocumentAdvice {
         return sb.toString();
     }
 }
-
-
