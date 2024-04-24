@@ -412,11 +412,12 @@ public class InterfacesDocumentAdvice {
         Class<?> returnType = field.getType();
         // 泛型类型
         Class<?> genericity = null;
+        Type[] typeArguments = null;
         // 检查是否为 ParameterizedType
         if (field.getGenericType() instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
             // 获取泛型类型的参数
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            typeArguments = parameterizedType.getActualTypeArguments();
             for (Type typeArgument : typeArguments) {
                 if (typeArgument instanceof Class) {
                     genericity = (Class) typeArgument;
@@ -425,9 +426,13 @@ public class InterfacesDocumentAdvice {
         }
 
         StringBuilder builder = new StringBuilder();
-        if (null == genericity) {
+        if (null == genericity && null == typeArguments) {
             String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType, null);
             String value = stringBuilding(index, parameterValue);
+            builder.append(value);
+        } else if (null != typeArguments) {
+            String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType, null);
+            String value = stringBuilding(index, parameterValue + "::" + typeArguments[0].getTypeName() + "(无法解析)");
             builder.append(value);
         } else {
             // 泛型处理
