@@ -199,7 +199,7 @@ public class InterfacesDocumentAdvice {
     private Collection<String> documentParams(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         Set<String> set = new LinkedHashSet<>();
         // 获取参数
-        Parameter[] parameters = getMethodParameters(auxiliaryBeanDto.getClas(), auxiliaryBeanDto.getMethod().getName());
+        Parameter[]   parameters = auxiliaryBeanDto.getMethod().getParameters();
         if (parameters.length == 0) {
             set.add(">>");
         } else {
@@ -218,7 +218,7 @@ public class InterfacesDocumentAdvice {
     private Collection<String> documentResponse(AuxiliaryDocumentBeanDto auxiliaryBeanDto) {
         Collection<String> list = new ArrayList<>();
         // 获取对象类
-        Class responseClass = auxiliaryBeanDto.getMethod().getReturnType();
+        Class<?> responseClass = auxiliaryBeanDto.getMethod().getReturnType();
         // 解析出参
         String out = getParameterValue(null, responseClass, 0, ParamsType.RESPONSE, null);
         if (StringUtils.isBlank(out)) {
@@ -318,40 +318,6 @@ public class InterfacesDocumentAdvice {
 
     /************************************************************************************************************************ */
     /************************************************************************************************************************ */
-
-
-    /**
-     * 获取方法入参对象
-     *
-     * @param clas
-     * @param methodName
-     * @return
-     */
-    private Parameter[] getMethodParameters(Class clas, String methodName) {
-        Class clazz = null;
-
-        String classForName;
-        if (clas.getName().indexOf("$") > 0) {
-            classForName = clas.getName().substring(0, clas.getName().indexOf("$"));
-        } else {
-            classForName = clas.getName();
-        }
-        try {
-            clazz = Class.forName(classForName);
-        } catch (ClassNotFoundException e) {
-            if (properties.isDebug()) {
-                e.printStackTrace();
-            }
-        }
-        Method[] methods = clazz.getDeclaredMethods();
-        for (Method method : methods) {
-            if (methodName.equals(method.getName())) {
-                Parameter[] parameters = method.getParameters();
-                return parameters;
-            }
-        }
-        return new Parameter[0];
-    }
 
     /**
      * 生成对象赋值
