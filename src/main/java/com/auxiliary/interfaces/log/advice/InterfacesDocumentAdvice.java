@@ -432,7 +432,7 @@ public class InterfacesDocumentAdvice {
             builder.append(value);
         } else if (null != typeArguments) {
             String parameterValue = getParameterValue(beanMethodDto.getName(), returnType, index, paramsType, null);
-            String value = stringBuilding(index, parameterValue + "::" + typeArguments[0].getTypeName() + "(无法解析)");
+            String value = stringBuilding(index, parameterValue + "::" + typeArguments[0].getTypeName());
             builder.append(value);
         } else {
             // 泛型处理
